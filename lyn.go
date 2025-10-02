@@ -27,8 +27,10 @@ func htmlTemplate(body string, title string) string {
 `, title, body)
 }
 
-func detectMimeType(filename string) string {
+func detectContentType(filename string) string {
 	switch {
+	case strings.HasSuffix(filename, ".svg"):
+		return "image/svg+xml"
 	case strings.HasSuffix(filename, ".js"):
 		return "text/javascript"
 	case strings.HasSuffix(filename, ".css"):
@@ -45,8 +47,8 @@ func serveFile(path string, w http.ResponseWriter) {
 		fmt.Println("Can't read content of", path)
 	}
 
-	mimetype := detectMimeType(filepath.Base(path))
-	w.Header().Add("Content-Type", mimetype)
+	contentType := detectContentType(filepath.Base(path))
+	w.Header().Add("Content-Type", contentType)
 	w.Write(fileContent)
 }
 
