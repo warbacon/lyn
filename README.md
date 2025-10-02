@@ -3,9 +3,8 @@
 > [!IMPORTANT]
 > Work in progress!
 
-Lyn is a **dead-simple, lightweight web server** for serving files and browsing
-directories. Think of it as a minimal replacement for Python’s `http.server` —
-but with a cleaner and more modern interface.
+Lyn is a minimal, fast, and cross-platform web server for serving static files
+and browsing directories, inspired by Python's `http.server`.
 
 ## 🚀 Usage
 
@@ -13,10 +12,31 @@ but with a cleaner and more modern interface.
 lyn
 ```
 
-This will start a server in the current directory. You can then open
-<http://localhost:8080>.
+This will start a server in the current directory.
+
+You can also customize its behavior using additional options — run:
+
+```bash
+lyn -h
+```
+
+for a full list of available flags.
+
+## ⚙️ Installation
+
+Currently, manual compilation is required, but it's very straightforward with
+go. Simply run:
+
+```bash
+go build .
+```
+
+inside this repository.
+
+This will generate a binary named `lyn` (or `lyn.exe` on Windows) that you can
+run directly.
 
 ## ⚠️ Disclaimer
 
-Lyn is **intended for personal or development use only**. It’s not ready for
-production environments.
+**Lyn is not intended for production use.** Use it for development, testing, or
+learning purposes only.
