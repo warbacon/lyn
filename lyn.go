@@ -1,106 +1,104 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
-
-	"github.com/fatih/color"
-	"github.com/gabriel-vasile/mimetype"
+    "flag"
+    "fmt"
+    "net/http"
+    "os"
+    "path/filepath"
+    "strconv"
+    "strings"
 )
 
-func logRequest(req *http.Request) {
-	greenBold := color.New(color.FgGreen, color.Bold).Sprintf
-	fmt.Println(greenBold(req.Method), req.URL.Path)
+func htmlTemplate(body string) string {
+    return fmt.Sprintf(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lyn</title>
+    <style> * { font-family: sans; } html { color-scheme: light dark; } </style>
+</head>
+<body>
+    %s
+</body>
+</html>
+`, body)
 }
 
-func customHandler(w http.ResponseWriter, req *http.Request) {
-	logRequest(req)
+func detectMimeType(filename string) string {
+    switch {
+    case strings.HasSuffix(filename, ".js"):
+        return "text/javascript"
+    case strings.HasSuffix(filename, ".css"):
+        return "text/css"
+    }
 
-	localPath := "." + req.URL.Path
-
-	file, err := os.Stat(localPath)
-	if err != nil {
-		color.Red("File %s not found", localPath)
-		http.NotFound(w, req)
-		return
-	}
-
-	var data []byte
-	var contentType string
-
-	if file.IsDir() {
-		// Try to serve index.html
-		indexPath := filepath.Join(localPath, "index.html")
-		_, err := os.Stat(indexPath)
-		if err == nil {
-			fmt.Println("Serving " + indexPath)
-			data, err = os.ReadFile(indexPath)
-			if err != nil {
-				color.Red("File %s cannot be read", indexPath)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			contentType = "text/html; charset=utf-8"
-		} else {
-			// Directory listing
-			dir, err := os.ReadDir(localPath)
-			if err != nil {
-				color.Red("Cannot read directory %s", localPath)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			dirHtml := "<html><head><title>Lyn</title></head><body><h1>Directory listing for " + req.URL.Path + "</h1><ul>\n"
-
-			// Add parent directory link if not at root
-			if req.URL.Path != "/" {
-				parentPath := req.URL.Path
-				if strings.HasSuffix(parentPath, "/") && len(parentPath) > 1 {
-					parentPath = parentPath[:len(parentPath)-1]
-				}
-				parentPath = filepath.Dir(parentPath)
-				if !strings.HasSuffix(parentPath, "/") {
-					parentPath += "/"
-				}
-				dirHtml += "<li><a href=\"" + parentPath + "\">../</a></li>\n"
-			}
-
-			for _, file := range dir {
-				fileName := file.Name()
-				if file.IsDir() {
-					fileName += "/"
-				}
-				dirHtml += "<li><a href=\"" + filepath.Join(req.URL.Path, fileName) + "\">" + fileName + "</a></li>\n"
-			}
-			dirHtml += "</ul></body></html>\n"
-			data = []byte(dirHtml)
-			contentType = "text/html; charset=utf-8"
-		}
-	} else {
-		// Serve individual file
-		data, err = os.ReadFile(localPath)
-		if err != nil {
-			color.Red("File %s cannot be read", localPath)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		mtype, err := mimetype.DetectFile(filepath.Base(localPath))
-		if err == nil {
-			contentType = mtype.String()
-		}
-	}
-
-	w.Header().Set("Content-Type", contentType)
-	w.Write(data)
+    return ""
 }
 
+func serveFile(path string, w http.ResponseWriter) {
+    fileContent, err := os.ReadFile(path)
+
+    if err != nil {
+        fmt.Println("Can't read content of", path)
+    }
+
+    mimetype := detectMimeType(filepath.Base(path))
+    w.Header().Add("Content-Type", mimetype)
+    w.Write(fileContent)
+}
+
+func dirView(root, path string) string {
+    html := "<h1>Index of " + path + "</h1>"
+    rpath := filepath.Join(root, path)
+    dir, err := os.ReadDir(rpath)
+    if err != nil {
+        return htmlTemplate("<p>Can't read directory " + rpath + "</p>")
+    }
+
+    html += "\n<ul>"
+    if path != "/" {
+        html += "\n<a href=\"/\"><li>../</li></a>"
+    }
+    for _, e := range dir {
+        filename := e.Name()
+        if e.IsDir() {
+            filename += "/"
+        }
+        html += "\n<a href=\"" + path + filename + "\"><li>" + filename + "</li></a>"
+    }
+    html += "\n</ul>"
+
+    return htmlTemplate(html)
+}
+
+
+func serve(root string) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        fmt.Println("GET", r.URL.Path)
+        rpath := filepath.Join(root, r.URL.Path)
+
+        stat, err := os.Stat(rpath)
+        if err != nil {
+            fmt.Println("ERROR:", rpath, "not found")
+            http.NotFound(w, r)
+            return
+        }
+
+        if !stat.IsDir() {
+            serveFile(rpath, w)
+        } else {
+            w.Write([]byte(dirView(root, r.URL.Path)))
+        }
+    }
+}
 func main() {
-	port := "8080"
-	http.HandleFunc("/", customHandler)
-	fmt.Printf("Server running on http://localhost:%s\n", port)
-	http.ListenAndServe(":"+port, nil)
+    port := flag.Int("p", 8080, "Port")
+    dir := flag.String("d", ".", "Root directory")
+    flag.Parse()
+    fmt.Printf("Serving %s in http://localhost:%d\n", *dir, *port)
+    http.HandleFunc("/", serve(*dir))
+    http.ListenAndServe(":"+strconv.Itoa(*port), nil)
 }
