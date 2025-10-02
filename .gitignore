@@ -1,2 +1,6 @@
+# air temporal directory
+tmp/
+
+# binaries
 lyn
-tmp
+lyn.exe
