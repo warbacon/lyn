@@ -108,7 +108,17 @@ func main() {
 	dir := flag.String("d", ".", "Root directory")
 	flag.Parse()
 
-	fmt.Printf("Serving HTTP on http://localhost:%d\n", *port)
-	http.HandleFunc("/", serve(*dir))
-	http.ListenAndServe(":"+strconv.Itoa(*port), nil)
+	absDir, err := filepath.Abs(*dir)
+	if err != nil {
+		fmt.Println("Error resolving directory:", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Serving %s on http://localhost:%d\n", absDir, *port)
+	http.HandleFunc("/", serve(absDir))
+	err = http.ListenAndServe(":"+strconv.Itoa(*port), nil)
+
+	if err != nil {
+		os.Exit(1)
+	}
 }
