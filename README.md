@@ -22,10 +22,14 @@ lyn -h
 
 for a full list of available flags.
 
-## ⚙️ Installation
+## 🛠️ Installation
 
-Currently, manual compilation is required, but it's very straightforward with
-go. Simply run:
+You can check the [unstable automated
+builds](https://github.com/warbacon/lyn/releases/tag/unstable).
+
+## ⚙️ Compilation
+
+Simply run:
 
 ```bash
 go build .
