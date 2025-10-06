@@ -1,4 +1,4 @@
-# Lyn ⚡
+# Lyn ☁️
 
 > [!IMPORTANT]
 > Work in progress!
