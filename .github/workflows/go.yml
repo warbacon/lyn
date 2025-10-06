@@ -61,6 +61,7 @@ jobs:
           lyn-linux-amd64.tar.gz
           lyn-linux-arm64.tar.gz
           lyn-windows-amd64.zip
+          lyn-windows-arm64.zip
           lyn-darwin-arm64.tar.gz
         body: |
           Automated unstable build from the main branch.
