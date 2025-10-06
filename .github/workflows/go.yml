@@ -1,5 +1,8 @@
 name: Go
 
+permissions:
+  contents: write
+
 on:
   push:
     branches: [ "main" ]
@@ -73,6 +76,3 @@ jobs:
            
           ### Windows
           Extract `lyn-windows-amd64.zip` and add the directory to your PATH.
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
