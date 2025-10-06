@@ -36,18 +36,18 @@ jobs:
         GOOS=windows GOARCH=amd64 go build -o lyn.exe ./...
         zip lyn-windows-amd64.zip lyn.exe
         rm lyn.exe
+
+        # Windows arm64
+        GOOS=windows GOARCH=arm64 go build -o lyn.exe ./...
+        zip lyn-windows-amd64.zip lyn.exe
+        rm lyn.exe
         
-        # macOS amd64
-        GOOS=darwin GOARCH=amd64 go build -o lyn ./...
-        tar -czf lyn-darwin-amd64.tar.gz lyn
-        rm lyn
-        
-        # macOS arm64 (Apple Silicon)
+        # macOS arm64
         GOOS=darwin GOARCH=arm64 go build -o lyn ./...
         tar -czf lyn-darwin-arm64.tar.gz lyn
         rm lyn
     
-    - name: Create/Update Unstable Release
+    - name: Create Unstable Release
       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
       uses: softprops/action-gh-release@v2
       with:
@@ -58,21 +58,9 @@ jobs:
           lyn-linux-amd64.tar.gz
           lyn-linux-arm64.tar.gz
           lyn-windows-amd64.zip
-          lyn-darwin-amd64.tar.gz
           lyn-darwin-arm64.tar.gz
         body: |
-          Automated nightly build from the main branch.
+          Automated unstable build from the main branch.
           
           **Commit:** ${{ github.sha }}
           **Date:** ${{ github.event.head_commit.timestamp }}
-
-          ## Installation
-          
-          ### Linux/macOS
-          ```bash
-          tar -xzf lyn-linux-amd64.tar.gz
-          sudo mv lyn /usr/local/bin/
-          ```
-           
-          ### Windows
-          Extract `lyn-windows-amd64.zip` and add the directory to your PATH.
