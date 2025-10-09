@@ -26,7 +26,7 @@ for a full list of available flags.
 You can check the [unstable automated
 builds](https://github.com/warbacon/lyn/releases/tag/unstable).
 
-## ⚙️ Compilation
+## ⚙️ Building from source
 
 Simply run:
 
