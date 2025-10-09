@@ -1,10 +1,9 @@
-# Lyn ☁️
+# ☁️ Lyn
 
 > [!IMPORTANT]
 > Work in progress!
 
-Lyn is a minimal, fast, and cross-platform web server for serving static files
-and browsing directories, inspired by Python's `http.server`.
+Lyn is a simple and fast HTTP file server, inspired by Python's `http.server`.
 
 ## 🚀 Usage
 
