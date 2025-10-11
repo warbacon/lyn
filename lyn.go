@@ -1,8 +1,10 @@
 package main
 
+import _ "embed"
 import (
 	"flag"
 	"fmt"
+	"github.com/charmbracelet/lipgloss"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,21 +12,36 @@ import (
 	"strings"
 )
 
+//go:embed template/index.html
+var template string
+
+type Options struct {
+	Port           int
+	RootDir        string
+	FileServerMode bool
+}
+
+func parseOptions() Options {
+	port := flag.Int("p", 8080, "Port")
+	dir := flag.String("d", ".", "Root directory")
+	fileServerMode := flag.Bool("f", false, "Enable file server mode")
+	flag.Parse()
+
+	absDir, err := filepath.Abs(*dir)
+	if err != nil {
+		fmt.Println("Error resolving directory:", err)
+		os.Exit(1)
+	}
+
+	return Options{
+		Port:           *port,
+		RootDir:        absDir,
+		FileServerMode: *fileServerMode,
+	}
+}
+
 func htmlTemplate(body string, title string) string {
-	return fmt.Sprintf(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>%s</title>
-    <style> * { font-family: sans-serif; } html { color-scheme: light dark; } </style>
-</head>
-<body>
-    %s
-</body>
-</html>
-`, title, body)
+	return fmt.Sprintf(template, title, body)
 }
 
 func detectContentType(filename string) string {
@@ -36,19 +53,19 @@ func detectContentType(filename string) string {
 	case strings.HasSuffix(filename, ".css"):
 		return "text/css"
 	}
-
 	return ""
 }
 
 func serveFile(path string, w http.ResponseWriter) {
 	fileContent, err := os.ReadFile(path)
-
 	if err != nil {
 		fmt.Println("Can't read content of", path)
+		return
 	}
-
 	contentType := detectContentType(filepath.Base(path))
-	w.Header().Add("Content-Type", contentType)
+	if contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
 	w.Write(fileContent)
 }
 
@@ -58,7 +75,7 @@ func dirView(root, path string) string {
 	rpath := filepath.Join(root, path)
 	dir, err := os.ReadDir(rpath)
 	if err != nil {
-		return htmlTemplate("<p>Can't read directory "+rpath+"</p>", "")
+		return htmlTemplate("<p>Can't read directory "+rpath+"</p>", "Error")
 	}
 
 	html += "\n<ul>"
@@ -74,18 +91,19 @@ func dirView(root, path string) string {
 		html += "\n<li><a href=\"" + path + filename + "\">" + filename + "</a></li>"
 	}
 	html += "\n</ul>"
-
 	return htmlTemplate(html, title)
 }
 
-func serve(root string) http.HandlerFunc {
+func serve(opts Options) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("GET", r.URL.Path)
-		rpath := filepath.Join(root, r.URL.Path)
+		methodStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true)
+		fmt.Println(methodStyle.Render("GET"), r.URL.Path)
 
+		rpath := filepath.Join(opts.RootDir, r.URL.Path)
 		stat, err := os.Stat(rpath)
 		if err != nil {
-			fmt.Println("ERROR:", rpath, "not found")
+			errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
+			fmt.Println(errorStyle.Render("ERROR:"), rpath, "not found")
 			http.NotFound(w, r)
 			return
 		}
@@ -96,29 +114,50 @@ func serve(root string) http.HandlerFunc {
 				return
 			}
 
-			w.Write([]byte(dirView(root, r.URL.Path)))
+			if !opts.FileServerMode {
+				indexFile := filepath.Join(rpath, "index.html")
+				_, err = os.ReadFile(indexFile)
+				if err == nil {
+					serveFile(indexFile, w)
+					return
+				}
+			}
+
+			w.Write([]byte(dirView(opts.RootDir, r.URL.Path)))
 		} else {
 			serveFile(rpath, w)
 		}
 	}
 }
 
-func main() {
-	port := flag.Int("p", 8080, "Port")
-	dir := flag.String("d", ".", "Root directory")
-	flag.Parse()
+func renderUrl(url string, port string) string {
+	style := lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	portStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
 
-	absDir, err := filepath.Abs(*dir)
-	if err != nil {
-		fmt.Println("Error resolving directory:", err)
-		os.Exit(1)
+	result := style.Render(url)
+
+	if port != "" {
+		result += portStyle.Render(":" + port)
 	}
 
-	fmt.Printf("Serving %s on http://localhost:%d\n", absDir, *port)
-	http.HandleFunc("/", serve(absDir))
-	err = http.ListenAndServe(":"+strconv.Itoa(*port), nil)
+	return result
+}
 
+func main() {
+	opts := parseOptions()
+
+	servingPath := opts.RootDir
+	homeDir, err := os.UserHomeDir()
+
+	if err == nil {
+		servingPath = strings.Replace(servingPath, homeDir, "~", 1)
+	}
+
+	fmt.Println(fmt.Sprintf("Serving %s on", servingPath), renderUrl("http://localhost", strconv.Itoa(opts.Port)))
+
+	http.HandleFunc("/", serve(opts))
+	err = http.ListenAndServe(":"+strconv.Itoa(opts.Port), nil)
 	if err != nil {
-		os.Exit(1)
+		panic(err)
 	}
 }
