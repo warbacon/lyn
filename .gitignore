@@ -1,6 +1,9 @@
 # air temporal directory
 tmp/
 
+# direnv
+.direnv/
+
 # binaries
 lyn
 lyn.exe
